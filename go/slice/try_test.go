@@ -6,8 +6,11 @@ import (
 )
 
 func TestTryAppendInt(t *testing.T) {
-	a := make([]int, 11, 20)
-	assert.Equal(t, a, AppendInt(0))
+	assert.Equal(t, 512, AppendInt(254))
+	assert.Equal(t, 608, AppendInt(260))
+	assert.Equal(t, 608, AppendInt(300))
+	assert.Equal(t, 768, AppendInt(400))
+	assert.Equal(t, 848, AppendInt(500))
 }
 
 func TestCapacityExpansion(t *testing.T) {
@@ -19,6 +22,10 @@ func TestJsonUnmarshal(t *testing.T) {
 	assert.NotEqual(t, nil, JsonUnmarshal())
 }
 
-func TestMakeSliceInit( T *testing.T) {
+func TestMakeSliceInit(T *testing.T) {
 	assert.Equal(T, 513, MakeSliceInit(513))
+}
+
+func TestSliceAppend(T *testing.T) {
+	SliceAppend()
 }

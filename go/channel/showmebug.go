@@ -2,8 +2,10 @@ package channel
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // 通过协程、通道实现并发按特定顺序打印字符串
@@ -63,5 +65,27 @@ func cat(wg *sync.WaitGroup, counter uint64, catCh, dogCh chan struct{}) {
 		fmt.Println("cat")
 		atomic.AddUint64(&counter, 1)
 		dogCh <- struct{}{}
+	}
+}
+
+func forSelect() {
+	ch := make(chan struct{})
+	chRun := time.NewTicker(100 * time.Millisecond)
+	go func() {
+		time.Sleep(2 * time.Second)
+		close(ch)
+	}()
+	for {
+		time.Sleep(time.Second)
+		log.Println("working hard")
+		select { // case 是随机的
+		case <-chRun.C:
+			log.Println("1")
+		case <-ch:
+			log.Println("2")
+			return
+		default:
+			log.Println("default")
+		}
 	}
 }
