@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"net/http"
-	"showmethecode/go/gin"
-	"time"
+	"github.com/imroc/biu"
+	"math"
+	"strconv"
+	"strings"
 )
 
 /*** escape 1 run: `go tool compile -S gin.go` 发现，内存是在堆上进行分配的
@@ -23,15 +24,15 @@ type Cursor struct {
 }
 */
 
-type student struct {
-	Name string
-	Age  int8
-}
-
-func FormatAsDate(t time.Time) string {
-	year, month, day := t.Date()
-	return fmt.Sprintf("%d-%02d-%02d", year, month, day)
-}
+//type student struct {
+//	Name string
+//	Age  int8
+//}
+//
+//func FormatAsDate(t time.Time) string {
+//	year, month, day := t.Date()
+//	return fmt.Sprintf("%d-%02d-%02d", year, month, day)
+//}
 
 func main() {
 	/* escape 1
@@ -79,15 +80,56 @@ func main() {
 	//
 	//r.Run(":9999")
 
-	r := gin.Default()
-	r.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "Hello World\n")
-	})
-	r.GET("/panic", func(c *gin.Context) {
-		names := []string{"geek"}
-		c.String(http.StatusOK, names[100])
-	})
-	r.Run(":9999")
+	/*
+		r := gin.Default()
+		r.GET("/", func(c *gin.Context) {
+			c.String(http.StatusOK, "Hello World\n")
+		})
+		r.GET("/panic", func(c *gin.Context) {
+			names := []string{"geek"}
+			c.String(http.StatusOK, names[100])
+		})
+		r.Run(":9999")
+	*/
+	/*
+		var i int8 = -9
+		fmt.Println("original:", i)
+		fmt.Printf("%s\n", biu.ToBinaryString(i))
+		r := i >> 2
+		fmt.Printf("%s\n", biu.ToBinaryString(r))
+		fmt.Println("result:", r)
+	*/
+
+	var i float32 = 99.99
+	exponentLen := 8           // 指数部分的长度
+	var middleware int64 = 127 // 中间数
+	// 获取完整的二进制存储值
+	str := biu.ToBinaryString(math.Float32bits(i))
+	fmt.Println("str: ", str)
+	// 只保留 0101 值
+	newStr := strings.ReplaceAll(str[1:len(str)-1], " ", "")
+	fmt.Println("newStr: ", newStr)
+	// 数值切分逻辑
+
+	sign := newStr[0:1]
+	exponent := newStr[1 : 1+exponentLen]
+	fraction := newStr[1+exponentLen:]
+	fmt.Println("sign: ", sign)
+	fmt.Println("exponent: ", exponent)
+	fmt.Println("fraction: ", fraction)
+	// 指数部分值计算逻辑
+	decimalExponent, _ := strconv.ParseInt(exponent, 2, 32)
+	fmt.Println("decimalExponent: ", decimalExponent)
+	exponentValue := 1 << (decimalExponent - middleware)
+	fmt.Println("exponentValue: ", exponentValue)
+	// 有效数字部分计算逻辑
+	decimalFraction, _ := strconv.ParseInt(fraction, 2, 32)
+	fmt.Println("decimalFraction: ", decimalFraction)
+	dividend := 1 << (len(newStr) - 1 - exponentLen)
+	fractionValue := float64(decimalFraction)/float64(dividend) + 1
+	fmt.Println("fractionValue: ", fractionValue)
+
+	fmt.Println(fractionValue * float64(exponentValue))
 }
 
 /*

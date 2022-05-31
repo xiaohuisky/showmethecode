@@ -9,16 +9,16 @@ import (
 type H map[string]interface{}
 
 type Context struct {
-	// origin
+	// HTTP 基础库的参数
 	Writer http.ResponseWriter
 	Req    *http.Request
-	// request
+	// 请求相关值
 	Path   string
 	Method string
 	Params map[string]string
-	// response info
+	// 响应信息
 	StatusCode int
-	// middleware
+	// 中间件
 	handlers []HandlerFunc
 	index    int
 	engine   *Engine
