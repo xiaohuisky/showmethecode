@@ -1,7 +1,5 @@
 package runntime
 
-import "reflect"
-
 var A Wb
 var B Wb
 
@@ -11,6 +9,7 @@ type Wb struct {
 
 // go build -gcflags "-N -I"
 // go tool objdump -s 'main\.simpleSet' -S ./main.exe
+/*
 func simpleSet(c *int) {
 	A.Obj = nil
 	B.Obj = c
@@ -25,3 +24,4 @@ func simpleSet(c *int) {
 	b := "1"
 	c := reflect.StringHeader{&a, &b}
 }
+*/

@@ -15,3 +15,7 @@ func TestGetNext(t *testing.T) {
 func TestKMP(t *testing.T) {
 	assert.Equal(t, 1, KMP("ttest", "tes"))
 }
+
+func TestKMP1(t *testing.T) {
+	assert.Equal(t, 2, KMP("北京天安门最美丽", "天安门"))
+}
