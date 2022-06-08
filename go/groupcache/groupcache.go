@@ -3,7 +3,10 @@ package groupcache
 import (
 	"fmt"
 	"log"
+	"showmethecode/go/groupcache/singleflight"
 	"sync"
+
+	pb "showmethecode/go/groupcache/geecachepb"
 )
 
 // 负责与外部交互，控制缓存存储和获取的主流程
@@ -23,6 +26,8 @@ type Group struct {
 	name      string
 	getter    Getter // 缓存未命中时获取源数据的回调(callback)
 	mainCache cache  // 并发缓存
+	peers     PeerPicker
+	loader    *singleflight.Group
 }
 
 var (
@@ -41,6 +46,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 		name:      name,
 		getter:    getter,
 		mainCache: cache{cacheBytes: cacheBytes},
+		loader:    &singleflight.Group{},
 	}
 	groups[name] = g
 	return g
@@ -65,7 +71,37 @@ func (g *Group) Get(key string) (ByteView, error) {
 }
 
 func (g *Group) load(key string) (value ByteView, err error) {
-	return g.getLocally(key)
+	viewi, err := g.loader.Do(key, func() (interface{}, error) {
+		if g.peers != nil {
+			if peer, ok := g.peers.PickPeer(key); ok { // 选择节点
+				if value, err = g.getFromPeer(peer, key); err == nil { // 从远程获取
+					return value, nil
+				}
+				log.Println("[Cache Failed to get from peer]", err)
+			}
+		}
+		return g.getLocally(key) // 本机节点或失败
+	})
+	if err == nil {
+		return viewi.(ByteView), nil
+	}
+
+	return
+}
+
+// getFromPeer 使用实现了 PeerGetter 接口的 httpGetter 从访问远程节点，获取缓存值
+func (g *Group) getFromPeer(peer PeerGetter, key string) (ByteView, error) {
+	req := &pb.Request{
+		Group: g.name,
+		Key:   key,
+	}
+
+	res := &pb.Response{}
+	err := peer.Get(req, res)
+	if err != nil {
+		return ByteView{}, err
+	}
+	return ByteView{b: res.Value}, nil
 }
 
 func (g *Group) getLocally(key string) (ByteView, error) {
@@ -82,4 +118,12 @@ func (g *Group) getLocally(key string) (ByteView, error) {
 // populateCache 将源数据添加到缓存 mainCache 中
 func (g *Group) populateCache(key string, value ByteView) {
 	g.mainCache.add(key, value)
+}
+
+// RegisterPeers 将实现了 PeerPicker 接口的 HTTPPool 注入到 Group 中
+func (g *Group) RegisterPeers(peers PeerPicker) {
+	if g.peers != nil {
+		panic("RegisterPeerPicker called more than once")
+	}
+	g.peers = peers
 }

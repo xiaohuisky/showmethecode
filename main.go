@@ -1,11 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/imroc/biu"
-	"math"
-	"strconv"
-	"strings"
+	"log"
+	"net/http"
+	"showmethecode/go/groupcache"
 )
 
 /*** escape 1 run: `go tool compile -S gin.go` 发现，内存是在堆上进行分配的
@@ -100,36 +100,108 @@ func main() {
 		fmt.Println("result:", r)
 	*/
 
-	var i float32 = 99.99
-	exponentLen := 8           // 指数部分的长度
-	var middleware int64 = 127 // 中间数
-	// 获取完整的二进制存储值
-	str := biu.ToBinaryString(math.Float32bits(i))
-	fmt.Println("str: ", str)
-	// 只保留 0101 值
-	newStr := strings.ReplaceAll(str[1:len(str)-1], " ", "")
-	fmt.Println("newStr: ", newStr)
-	// 数值切分逻辑
+	/*
+		var i float32 = 99.99
+		exponentLen := 8           // 指数部分的长度
+		var middleware int64 = 127 // 中间数
+		// 获取完整的二进制存储值
+		str := biu.ToBinaryString(math.Float32bits(i))
+		fmt.Println("str: ", str)
+		// 只保留 0101 值
+		newStr := strings.ReplaceAll(str[1:len(str)-1], " ", "")
+		fmt.Println("newStr: ", newStr)
+		// 数值切分逻辑
 
-	sign := newStr[0:1]
-	exponent := newStr[1 : 1+exponentLen]
-	fraction := newStr[1+exponentLen:]
-	fmt.Println("sign: ", sign)
-	fmt.Println("exponent: ", exponent)
-	fmt.Println("fraction: ", fraction)
-	// 指数部分值计算逻辑
-	decimalExponent, _ := strconv.ParseInt(exponent, 2, 32)
-	fmt.Println("decimalExponent: ", decimalExponent)
-	exponentValue := 1 << (decimalExponent - middleware)
-	fmt.Println("exponentValue: ", exponentValue)
-	// 有效数字部分计算逻辑
-	decimalFraction, _ := strconv.ParseInt(fraction, 2, 32)
-	fmt.Println("decimalFraction: ", decimalFraction)
-	dividend := 1 << (len(newStr) - 1 - exponentLen)
-	fractionValue := float64(decimalFraction)/float64(dividend) + 1
-	fmt.Println("fractionValue: ", fractionValue)
+		sign := newStr[0:1]
+		exponent := newStr[1 : 1+exponentLen]
+		fraction := newStr[1+exponentLen:]
+		fmt.Println("sign: ", sign)
+		fmt.Println("exponent: ", exponent)
+		fmt.Println("fraction: ", fraction)
+		// 指数部分值计算逻辑
+		decimalExponent, _ := strconv.ParseInt(exponent, 2, 32)
+		fmt.Println("decimalExponent: ", decimalExponent)
+		exponentValue := 1 << (decimalExponent - middleware)
+		fmt.Println("exponentValue: ", exponentValue)
+		// 有效数字部分计算逻辑
+		decimalFraction, _ := strconv.ParseInt(fraction, 2, 32)
+		fmt.Println("decimalFraction: ", decimalFraction)
+		dividend := 1 << (len(newStr) - 1 - exponentLen)
+		fractionValue := float64(decimalFraction)/float64(dividend) + 1
+		fmt.Println("fractionValue: ", fractionValue)
 
-	fmt.Println(fractionValue * float64(exponentValue))
+		fmt.Println(fractionValue * float64(exponentValue))
+	*/
+
+	// group cache
+	var port int
+	var api bool
+	flag.IntVar(&port, "port", 8001, "Geecache server port")
+	flag.BoolVar(&api, "api", false, "Start a api server?")
+	flag.Parse()
+
+	apiAddr := "http://localhost:9999"
+	addrMap := map[int]string{
+		8001: "http://localhost:8001",
+		8002: "http://localhost:8002",
+		8003: "http://localhost:8003",
+	}
+
+	var addrs []string
+	for _, v := range addrMap {
+		addrs = append(addrs, v)
+	}
+
+	gee := createGroup()
+	if api {
+		go startAPIServer(apiAddr, gee)
+	}
+	startCacheServer(addrMap[port], []string(addrs), gee)
+}
+
+var db = map[string]string{
+	"Tom":  "630",
+	"Jack": "589",
+	"Sam":  "567",
+}
+
+func createGroup() *groupcache.Group {
+	return groupcache.NewGroup("scores", 2<<10, groupcache.GetterFunc(
+		func(key string) ([]byte, error) {
+			log.Println("[SlowDB] search key", key)
+			if v, ok := db[key]; ok {
+				return []byte(v), nil
+			}
+			return nil, fmt.Errorf("%s not exist", key)
+		}))
+}
+
+// 启动缓存服务器：创建 HTTPPool，添加节点信息，注册到 gee 中，启动 HTTP 服务（共3个端口，8001/8002/8003），用户不感知。
+func startCacheServer(addr string, addrs []string, gee *groupcache.Group) {
+	peers := groupcache.NewHTTPPool(addr)
+	peers.Set(addrs...)
+	gee.RegisterPeers(peers)
+	log.Println("geecache is running at", addr)
+	log.Fatal(http.ListenAndServe(addr[7:], peers))
+}
+
+// 启动一个 API 服务（端口 9999），与用户进行交互，用户感知。
+func startAPIServer(apiAddr string, gee *groupcache.Group) {
+	http.Handle("/api", http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			key := r.URL.Query().Get("key")
+			view, err := gee.Get(key)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Write(view.ByteSlice())
+
+		}))
+	log.Println("fontend server is running at", apiAddr)
+	log.Fatal(http.ListenAndServe(apiAddr[7:], nil))
+
 }
 
 /*
