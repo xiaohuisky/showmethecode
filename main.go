@@ -1,11 +1,10 @@
 package main
 
 import (
-	"flag"
-	"fmt"
+	"database/sql"
 	"log"
-	"net/http"
-	"showmethecode/go/groupcache"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 /*** escape 1 run: `go tool compile -S gin.go` 发现，内存是在堆上进行分配的
@@ -134,31 +133,48 @@ func main() {
 	*/
 
 	// group cache
-	var port int
-	var api bool
-	flag.IntVar(&port, "port", 8001, "Geecache server port")
-	flag.BoolVar(&api, "api", false, "Start a api server?")
-	flag.Parse()
+	/*
+		var port int
+		var api bool
+		flag.IntVar(&port, "port", 8001, "Geecache server port")
+		flag.BoolVar(&api, "api", false, "Start a api server?")
+		flag.Parse()
 
-	apiAddr := "http://localhost:9999"
-	addrMap := map[int]string{
-		8001: "http://localhost:8001",
-		8002: "http://localhost:8002",
-		8003: "http://localhost:8003",
-	}
+		apiAddr := "http://localhost:9999"
+		addrMap := map[int]string{
+			8001: "http://localhost:8001",
+			8002: "http://localhost:8002",
+			8003: "http://localhost:8003",
+		}
 
-	var addrs []string
-	for _, v := range addrMap {
-		addrs = append(addrs, v)
-	}
+		var addrs []string
+		for _, v := range addrMap {
+			addrs = append(addrs, v)
+		}
 
-	gee := createGroup()
-	if api {
-		go startAPIServer(apiAddr, gee)
+		gee := createGroup()
+		if api {
+			go startAPIServer(apiAddr, gee)
+		}
+		startCacheServer(addrMap[port], []string(addrs), gee)
+	*/
+	db, _ := sql.Open("sqlite3", "test.db")
+	defer func() { _ = db.Close() }()
+	_, _ = db.Exec("DROP TABLE IF EXISTS User;")
+	_, _ = db.Exec("CREATE TABLE User(Name text);")
+	result, err := db.Exec("INSERT INTO User(`Name`) values (?), (?)", "Tom", "Sam")
+	if err == nil {
+		affected, _ := result.RowsAffected()
+		log.Println(affected)
 	}
-	startCacheServer(addrMap[port], []string(addrs), gee)
+	row := db.QueryRow("SELECT Name FROM User LIMIT 1")
+	var name string
+	if err := row.Scan(&name); err == nil {
+		log.Println(name)
+	}
 }
 
+/* groupcache
 var db = map[string]string{
 	"Tom":  "630",
 	"Jack": "589",
@@ -203,7 +219,7 @@ func startAPIServer(apiAddr string, gee *groupcache.Group) {
 	log.Fatal(http.ListenAndServe(apiAddr[7:], nil))
 
 }
-
+*/
 /*
 func onlyForV2() gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -15,3 +15,7 @@ func TestRunWithSyncRWMutex(t *testing.T) {
 func TestRunWithSyncMap(t *testing.T) {
 	RunWithSyncMap()
 }
+
+func TestRunWithSyncRWMutex2(t *testing.T) {
+	runWithSyncRWMutex2()
+}

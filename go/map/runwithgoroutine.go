@@ -64,3 +64,23 @@ func RunWithSyncMap() {
 	}
 	time.Sleep(time.Second)
 }
+
+func runWithSyncRWMutex2() {
+	var lock sync.Mutex
+	s := make(map[int][]int)
+	n := 100
+	var wg sync.WaitGroup
+
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			wg.Add(1)
+			defer wg.Done()
+			lock.Lock()
+			defer lock.Unlock()
+			s[i] = append(s[i], i)
+		}(90)
+	}
+	wg.Wait()
+	fmt.Println(len(s[90]))
+	time.Sleep(time.Second)
+}

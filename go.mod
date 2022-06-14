@@ -8,6 +8,7 @@ require (
 	github.com/davecgh/go-spew v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/imroc/biu v0.0.0-20170329141542-0376ce6761c0 // indirect
+	github.com/mattn/go-sqlite3 v1.14.13 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
