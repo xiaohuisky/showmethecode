@@ -1,9 +1,6 @@
 package main
 
 import (
-	"database/sql"
-	"log"
-
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -158,6 +155,7 @@ func main() {
 		}
 		startCacheServer(addrMap[port], []string(addrs), gee)
 	*/
+	/* sqlite
 	db, _ := sql.Open("sqlite3", "test.db")
 	defer func() { _ = db.Close() }()
 	_, _ = db.Exec("DROP TABLE IF EXISTS User;")
@@ -172,6 +170,27 @@ func main() {
 	if err := row.Scan(&name); err == nil {
 		log.Println(name)
 	}
+
+	*/
+	//var mu = sync.WaitGroup{}
+	//fmt.Println(mu)
+	//type ta struct {
+	//	b []float64
+	//}
+	//
+	//a := []float64{
+	//	0.6,
+	//	0.5,
+	//	1,
+	//}
+	//t := &ta{
+	//	b: a,
+	//}
+	//sort.Float64s(t.b)
+	//fmt.Println(t.b)
+	//l := make([]int, 0)
+	//l = append(l, 1)
+	//fmt.Println(l)
 }
 
 /* groupcache
